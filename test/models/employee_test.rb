@@ -21,12 +21,12 @@ class EmployeeTest < ActiveSupport::TestCase
 
   test "filtered search matches name case-insensitively" do
     results = Employee.filtered(search: "priya")
-    assert_equal [employees(:one).id], results.pluck(:id)
+    assert_equal [ employees(:one).id ], results.pluck(:id)
   end
 
   test "filtered by country and status" do
     results = Employee.filtered(country: "United States", status: "Active")
-    assert_equal [employees(:two).id], results.pluck(:id)
+    assert_equal [ employees(:two).id ], results.pluck(:id)
   end
 
   test "adjust_compensation! updates pay and writes an audit row" do
