@@ -77,6 +77,8 @@ Rails.application.configure do
   config.active_record.attributes_for_inspect = [ :id ]
 
   # Enable DNS rebinding protection and other `Host` header attacks.
+  # Disabled for the Docker demo; set hosts explicitly in a real deployment.
+  config.hosts.clear if ENV["DISABLE_HOST_CHECK"] == "1"
   # config.hosts = [
   #   "example.com",     # Allow requests from example.com
   #   /.*\.example\.com/ # Allow requests from subdomains like `www.example.com`
