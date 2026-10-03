@@ -1,0 +1,23 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  name: MyString
+  email: MyString
+  department: MyString
+  country: MyString
+  currency: MyString
+  base_salary: 9.99
+  allowances: 9.99
+  joining_date: 2026-10-03
+  status: MyString
+
+two:
+  name: MyString
+  email: MyString
+  department: MyString
+  country: MyString
+  currency: MyString
+  base_salary: 9.99
+  allowances: 9.99
+  joining_date: 2026-10-03
+  status: MyString

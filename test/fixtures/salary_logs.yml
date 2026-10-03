@@ -1,0 +1,13 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  employee: one
+  old_salary: 9.99
+  new_salary: 9.99
+  change_reason: MyString
+
+two:
+  employee: two
+  old_salary: 9.99
+  new_salary: 9.99
+  change_reason: MyString
