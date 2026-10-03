@@ -1,0 +1,14 @@
+services:
+  web:
+    build: .
+    ports:
+      - "3000:80"
+    environment:
+      SECRET_KEY_BASE: assessment-demo-key-not-for-production
+      DISABLE_HOST_CHECK: "1"
+      RAILS_LOG_LEVEL: info
+    volumes:
+      - paydesk-data:/rails/storage
+
+volumes:
+  paydesk-data:

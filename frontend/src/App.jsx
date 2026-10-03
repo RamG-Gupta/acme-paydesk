@@ -1,214 +1,319 @@
-import React, { useState, useEffect } from 'react';
-import { apiService } from './services/api';
-import { 
-  Users, DollarSign, Building2, Search, Filter, 
-  ChevronLeft, ChevronRight, Edit2, TrendingUp, RefreshCw 
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  Building2, ChevronLeft, ChevronRight, DollarSign, Pencil,
+  RefreshCw, Search, Users, X
 } from 'lucide-react';
+import { apiService, formatMoney } from './services/api';
+
+const DEPARTMENTS = [
+  'Engineering', 'Product', 'Design', 'Human Resources', 'Sales',
+  'Marketing', 'Finance', 'Legal', 'Operations', 'Security'
+];
+const COUNTRIES = ['United States', 'India', 'United Kingdom', 'Germany', 'Singapore'];
+const STATUSES = ['Active', 'Suspended', 'Terminated'];
+
+function statusClass(status) {
+  if (status === 'Active') return 'bg-emerald-50 text-emerald-700 ring-emerald-200';
+  if (status === 'Suspended') return 'bg-amber-50 text-amber-700 ring-amber-200';
+  return 'bg-slate-100 text-slate-600 ring-slate-200';
+}
 
 export default function App() {
-  // State matrices for directory view grid
   const [employees, setEmployees] = useState([]);
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [meta, setMeta] = useState({ current_page: 1, total_pages: 1, total_count: 0 });
 
-  // Query state parameters
+  const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
-  const [selectedCountry, setSelectedCountry] = useState('');
-  const [selectedDept, setSelectedDept] = useState('');
+  const [country, setCountry] = useState('');
+  const [department, setDepartment] = useState('');
+  const [status, setStatus] = useState('');
   const [page, setPage] = useState(1);
 
-  // Focus targets for salary management modal updates
-  const [selectedEmp, setSelectedEmp] = useState(null);
-  const [newBase, setNewBase] = useState('');
-  const [newAllowances, setNewAllowances] = useState('');
+  const [selected, setSelected] = useState(null);
+  const [baseSalary, setBaseSalary] = useState('');
+  const [allowances, setAllowances] = useState('');
   const [reason, setReason] = useState('');
-  const [isUpdating, setIsUpdating] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  // Shared structural configuration constants
-  const DEPARTMENTS = ["Engineering", "Product", "Design", "Human Resources", "Sales", "Marketing", "Finance", "Legal", "Operations", "Security"];
-  const COUNTRIES = ["United States", "India", "United Kingdom", "Germany", "Singapore"];
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setSearch(searchInput);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(handle);
+  }, [searchInput]);
 
-  // Fetch core application state values asynchronously
-  const loadData = async () => {
+  const loadDirectory = useCallback(async () => {
     setLoading(true);
+    setError('');
     try {
-      const directoryData = await apiService.getEmployees({
-        page,
-        search,
-        country: selectedCountry,
-        department: selectedDept
+      const directory = await apiService.getEmployees({
+        page, search, country, department, status
       });
-      setEmployees(directoryData.employees);
-      setMeta(directoryData.meta);
-
-      const analyticsData = await apiService.getAnalytics();
-      setAnalytics(analyticsData);
+      setEmployees(directory.employees);
+      setMeta(directory.meta);
     } catch (err) {
-      console.error("Failed to load ecosystem metrics:", err);
+      setError(err.response?.data?.error || 'Could not load the employee directory.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, search, country, department, status]);
 
-  useEffect(() => {
-    loadData();
-  }, [page, selectedCountry, selectedDept]);
+  const loadAnalytics = useCallback(async () => {
+    try {
+      setAnalytics(await apiService.getAnalytics());
+    } catch {
+      // Directory can still function if analytics fails.
+    }
+  }, []);
 
-  // Execute manual filter triggers
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    setPage(1);
-    loadData();
-  };
+  useEffect(() => { loadDirectory(); }, [loadDirectory]);
+  useEffect(() => { loadAnalytics(); }, [loadAnalytics]);
 
-  // Launch editing panel for specific targets
-  const openEditModal = async (emp) => {
+  const maxDept = useMemo(() => {
+    const values = Object.values(analytics?.department_distribution || {});
+    return Math.max(1, ...values);
+  }, [analytics]);
+
+  const openEditor = async (emp) => {
     try {
       const detail = await apiService.getEmployeeDetails(emp.id);
-      setSelectedEmp(detail);
-      setNewBase(detail.base_salary);
-      setNewAllowances(detail.allowances);
+      setSelected(detail);
+      setBaseSalary(detail.base_salary);
+      setAllowances(detail.allowances);
       setReason('');
-    } catch (err) {
-      alert("Could not load employee details.");
+    } catch {
+      setError('Could not load that employee.');
     }
   };
 
-  // Commit salary update adjustments to server
-  const handleSalarySave = async (e) => {
+  const saveCompensation = async (e) => {
     e.preventDefault();
-    if (!reason.trim()) return alert("Audit trail reason is required.");
-    
-    setIsUpdating(true);
+    if (reason.trim().length < 3) {
+      setError('A change reason of at least 3 characters is required.');
+      return;
+    }
+    setSaving(true);
+    setError('');
     try {
-      await apiService.updateSalary(selectedEmp.id, {
-        baseSalary: newBase,
-        allowances: newAllowances,
-        changeReason: reason
+      await apiService.updateSalary(selected.id, {
+        baseSalary, allowances, changeReason: reason.trim()
       });
-      setSelectedEmp(null);
-      loadData();
+      setSelected(null);
+      await Promise.all([loadDirectory(), loadAnalytics()]);
     } catch (err) {
-      alert("Error committing compensation change.");
+      setError(err.response?.data?.error || 'Could not save the compensation change.');
     } finally {
-      setIsUpdating(false);
+      setSaving(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 font-sans antialiased">
-      {/* Structural Header Grid bar */}
-      <header className="border-b border-slate-800 bg-slate-900/50 backdrop-blur sticky top-0 z-40 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="bg-indigo-600 p-2 rounded-xl text-white shadow-lg shadow-indigo-600/20">
-            <Building2 size={24} />
+    <div className="min-h-screen">
+      <header className="border-b border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-3">
+            <div className="rounded-lg bg-indigo-600 p-2 text-white">
+              <Building2 size={20} />
+            </div>
+            <div>
+              <h1 className="text-lg font-semibold tracking-tight text-slate-900">ACME PayDesk</h1>
+              <p className="text-xs text-slate-500">HR salary desk · {meta.total_count.toLocaleString()} people in this view</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-white">ACME PayDesk</h1>
-            <p className="text-xs text-slate-400">Enterprise Workforce Roster ({meta.total_count} Staff Profiles)</p>
-          </div>
+          <button
+            type="button"
+            onClick={() => { loadDirectory(); loadAnalytics(); }}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
+          >
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            Refresh
+          </button>
         </div>
-        <button onClick={loadData} className="p-2 text-slate-400 hover:text-white transition-colors">
-          <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
-        </button>
       </header>
 
-      <main className="p-6 max-w-7xl mx-auto space-y-6">
-        {/* Analytics Infrastructure Row Section */}
-        {analytics && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-slate-800/50 border border-slate-800 rounded-2xl p-5 shadow-sm">
-              <div className="flex items-center justify-between mb-3 text-slate-400">
-                <span className="text-sm font-medium">Global Headcount Matrix</span>
-                <Users size={20} className="text-indigo-400" />
-              </div>
-              <div className="text-3xl font-bold text-white">{meta.total_count}</div>
-              <p className="text-xs text-slate-400 mt-2">Active full-time roles across 5 sovereign regions</p>
-            </div>
-
-            {analytics.global_payroll_summary?.slice(0, 2).map((metric, idx) => (
-              <div key={idx} className="bg-slate-800/50 border border-slate-800 rounded-2xl p-5 shadow-sm">
-                <div className="flex items-center justify-between mb-3 text-slate-400">
-                  <span className="text-sm font-medium">Gross Annual Budget ({metric.currency})</span>
-                  <DollarSign size={20} className="text-emerald-400" />
-                </div>
-                <div className="text-2xl font-bold text-white">
-                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: metric.currency, maximumFractionDigits: 0 }).format(metric.total_spend)}
-                </div>
-                <p className="text-xs text-slate-400 mt-2">Avg Base Pay: {new Intl.NumberFormat('en-US', { style: 'currency', currency: metric.currency, maximumFractionDigits: 0 }).format(metric.average_salary)}</p>
-              </div>
-            ))}
+      <main className="mx-auto max-w-7xl space-y-6 px-6 py-6">
+        {error && (
+          <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+            {error}
           </div>
         )}
 
-        {/* Directory Controls Filter Desk Row */}
-        <div className="bg-slate-800/40 border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row items-center gap-4 justify-between">
-          <form onSubmit={handleSearchSubmit} className="relative w-full md:w-96">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-            <input 
-              type="text" 
-              placeholder="Search employee names or emails..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-10 pr-4 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
+        {analytics && (
+          <section className="grid grid-cols-1 gap-4 md:grid-cols-4">
+            <article className="rounded-xl border border-slate-200 bg-white p-4">
+              <div className="mb-2 flex items-center justify-between text-slate-500">
+                <span className="text-sm">Headcount</span>
+                <Users size={16} />
+              </div>
+              <p className="text-2xl font-semibold tabular-nums">{analytics.headcount.toLocaleString()}</p>
+              <p className="mt-1 text-xs text-slate-500">Active, suspended, and terminated</p>
+            </article>
+            {(analytics.global_payroll_summary || []).slice(0, 3).map((row) => (
+              <article key={row.currency} className="rounded-xl border border-slate-200 bg-white p-4">
+                <div className="mb-2 flex items-center justify-between text-slate-500">
+                  <span className="text-sm">Payroll · {row.currency}</span>
+                  <DollarSign size={16} />
+                </div>
+                <p className="text-xl font-semibold tabular-nums">{formatMoney(row.total_spend, row.currency)}</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  {row.employee_count.toLocaleString()} people · avg base {formatMoney(row.average_salary, row.currency)}
+                </p>
+              </article>
+            ))}
+          </section>
+        )}
+
+        {analytics?.department_distribution && (
+          <section className="rounded-xl border border-slate-200 bg-white p-4">
+            <h2 className="mb-3 text-sm font-medium text-slate-700">Headcount by department</h2>
+            <div className="grid gap-2 md:grid-cols-2">
+              {Object.entries(analytics.department_distribution).sort((a, b) => b[1] - a[1]).map(([name, count]) => (
+                <div key={name} className="flex items-center gap-3 text-sm">
+                  <span className="w-36 shrink-0 text-slate-600">{name}</span>
+                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
+                    <div className="h-full rounded-full bg-indigo-500" style={{ width: `${(count / maxDept) * 100}%` }} />
+                  </div>
+                  <span className="w-10 text-right tabular-nums text-slate-500">{count}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <section className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 md:flex-row md:items-center">
+          <label className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <input
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Search name or email"
+              className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm outline-none focus:border-indigo-400"
             />
-          </form>
+          </label>
+          <select value={country} onChange={(e) => { setCountry(e.target.value); setPage(1); }} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
+            <option value="">All countries</option>
+            {COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <select value={department} onChange={(e) => { setDepartment(e.target.value); setPage(1); }} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
+            <option value="">All departments</option>
+            {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
+          </select>
+          <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
+            <option value="">All statuses</option>
+            {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </section>
 
-          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-            <div className="flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-slate-300">
-              <Filter size={16} className="text-slate-500" />
-              <select 
-                value={selectedCountry} 
-                onChange={(e) => { setSelectedCountry(e.target.value); setPage(1); }}
-                className="bg-transparent border-none focus:outline-none text-sm text-slate-200"
-              >
-                <option value="" className="bg-slate-900">All Countries</option>
-                {COUNTRIES.map(c => <option key={c} value={c} className="bg-slate-900">{c}</option>)}
-              </select>
-            </div>
-
-            <div className="flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-slate-300">
-              <Building2 size={16} className="text-slate-500" />
-              <select 
-                value={selectedDept} 
-                onChange={(e) => { setSelectedDept(e.target.value); setPage(1); }}
-                className="bg-transparent border-none focus:outline-none text-sm text-slate-200"
-              >
-                <option value="" className="bg-slate-900">All Departments</option>
-                {DEPARTMENTS.map(d => <option key={d} value={d} className="bg-slate-900">{d}</option>)}
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* Scalable Enterprise Data Grid Table Frame */}
-        <div className="bg-slate-800/30 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-left text-sm text-slate-300">
-              <thead className="bg-slate-800/60 text-slate-400 font-medium border-b border-slate-800">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                 <tr>
-                  <th className="px-6 py-4">Employee Identity</th>
-                  <th className="px-6 py-4">Country</th>
-                  <th className="px-6 py-4">Department</th>
-                  <th className="px-6 py-4 text-right">Base Salary</th>
-                  <th className="px-6 py-4 text-right">Allowances</th>
-                  <th className="px-6 py-4 text-center">Status</th>
-                  <th className="px-6 py-4 text-center">Action Desk</th>
+                  <th className="px-4 py-3 font-medium">Employee</th>
+                  <th className="px-4 py-3 font-medium">Country</th>
+                  <th className="px-4 py-3 font-medium">Department</th>
+                  <th className="px-4 py-3 text-right font-medium">Base</th>
+                  <th className="px-4 py-3 text-right font-medium">Allowances</th>
+                  <th className="px-4 py-3 text-center font-medium">Status</th>
+                  <th className="px-4 py-3 text-right font-medium"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60 bg-transparent">
+              <tbody>
                 {loading ? (
-                  <tr>
-                    <td colSpan="7" className="text-center py-12 text-slate-500 font-medium">Streaming ledger entries...</td>
-                  </tr>
+                  <tr><td colSpan="7" className="px-4 py-12 text-center text-slate-500">Loading directory…</td></tr>
                 ) : employees.length === 0 ? (
-                  <tr>
-                    <td colSpan="7" className="text-center py-12 text-slate-500">No organizational profile matches discovered.</td>
+                  <tr><td colSpan="7" className="px-4 py-12 text-center text-slate-500">No employees match these filters.</td></tr>
+                ) : employees.map((emp) => (
+                  <tr key={emp.id} className="border-t border-slate-100 hover:bg-slate-50">
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-slate-900">{emp.name}</div>
+                      <div className="text-xs text-slate-500">{emp.email}</div>
+                    </td>
+                    <td className="px-4 py-3 text-slate-600">{emp.country}</td>
+                    <td className="px-4 py-3 text-slate-600">{emp.department}</td>
+                    <td className="px-4 py-3 text-right tabular-nums">{formatMoney(emp.base_salary, emp.currency)}</td>
+                    <td className="px-4 py-3 text-right tabular-nums">{formatMoney(emp.allowances, emp.currency)}</td>
+                    <td className="px-4 py-3 text-center">
+                      <span className={`inline-flex rounded-full px-2 py-0.5 text-xs ring-1 ${statusClass(emp.status)}`}>{emp.status}</span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <button type="button" onClick={() => openEditor(emp)} className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800">
+                        <Pencil size={14} /> Adjust
+                      </button>
+                    </td>
                   </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3 text-sm text-slate-600">
+            <span>Page {meta.current_page} of {meta.total_pages}</span>
+            <div className="flex gap-2">
+              <button type="button" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="rounded-lg border border-slate-200 p-1 disabled:opacity-40">
+                <ChevronLeft size={16} />
+              </button>
+              <button type="button" disabled={page >= meta.total_pages} onClick={() => setPage((p) => p + 1)} className="rounded-lg border border-slate-200 p-1 disabled:opacity-40">
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      {selected && (
+        <div className="fixed inset-0 z-50 flex items-start justify-end bg-slate-900/40">
+          <aside className="flex h-full w-full max-w-md flex-col bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+              <div>
+                <h2 className="font-semibold text-slate-900">{selected.name}</h2>
+                <p className="text-xs text-slate-500">{selected.email} · {selected.country} · {selected.currency}</p>
+              </div>
+              <button type="button" onClick={() => setSelected(null)} className="text-slate-400 hover:text-slate-700">
+                <X size={18} />
+              </button>
+            </div>
+            <form onSubmit={saveCompensation} className="space-y-4 overflow-y-auto px-5 py-5">
+              <label className="block text-sm">
+                <span className="text-slate-600">Base salary ({selected.currency})</span>
+                <input type="number" min="0" step="0.01" value={baseSalary} onChange={(e) => setBaseSalary(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
+              </label>
+              <label className="block text-sm">
+                <span className="text-slate-600">Allowances ({selected.currency})</span>
+                <input type="number" min="0" step="0.01" value={allowances} onChange={(e) => setAllowances(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
+              </label>
+              <label className="block text-sm">
+                <span className="text-slate-600">Change reason (required)</span>
+                <textarea required minLength={3} value={reason} onChange={(e) => setReason(e.target.value)} rows={3} placeholder="e.g. Annual appraisal 2026" className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
+              </label>
+              <button type="submit" disabled={saving} className="w-full rounded-lg bg-indigo-600 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60">
+                {saving ? 'Saving…' : 'Save compensation change'}
+              </button>
+              <div>
+                <h3 className="mb-2 text-sm font-medium text-slate-700">Audit trail</h3>
+                {(selected.salary_logs || []).length === 0 ? (
+                  <p className="text-sm text-slate-500">No previous adjustments.</p>
                 ) : (
-                  employees.map((emp) => (
-                    <tr key={emp.id} className="hover:bg-slate-800/20 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="font-semibold text-white">{emp.name}</div>
-                        <div className="text-xs text-slate-500">{emp.email}</div>
+                  <ul className="space-y-2">
+                    {selected.salary_logs.map((log) => (
+                      <li key={log.id} className="rounded-lg border border-slate-200 p-3 text-xs text-slate-600">
+                        <div className="font-medium text-slate-800">{log.change_reason}</div>
+                        <div className="mt-1 tabular-nums">
+                          Base {formatMoney(log.old_salary, selected.currency)} → {formatMoney(log.new_salary, selected.currency)}
+                        </div>
+                        <div className="text-slate-400">{new Date(log.created_at).toLocaleDateString()}</div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </form>
+          </aside>
+        </div>
+      )}
+    </div>
+  );
+}
