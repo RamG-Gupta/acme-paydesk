@@ -34,7 +34,7 @@ LAST_NAMES = ["Sharma", "Smith", "Johnson", "Gupta", "Davis", "Rodriguez", "Pate
 employees_data = []
 current_time = Time.current
 
-# 10,000 लूप चलाकर एरे में डेटा भरेंगे
+# Populate the array by running a loop 10,000 times
 10000.times do |i|
   country = COUNTRIES_CONFIG.keys.sample
   config = COUNTRIES_CONFIG[country]
@@ -66,12 +66,12 @@ end
 
 puts "💾 Bulk inserting 10,000 records into SQLite..."
 
-# Engineering Best Practice: insert_all single SQL query में सब इंसर्ट कर देता है (सिर्फ 1-2 सेकंड लेगा)
+# Engineering Best Practice: insert_all inserts everything in a single SQL query (it takes only 1-2 seconds)
 Employee.insert_all!(employees_data)
 
 puts "✅ Successfully seeded #{Employee.count} employees!"
 
-# कुछ एम्प्लॉइज के लिए सैलरी हिस्ट्री (Logs) जेनरेट करें ताकि ग्राफ़/ट्रेंड्स दिख सकें
+# Generate salary history (logs) for some employees so that graphs/trends can be viewed
 puts "📉 Creating initial historical salary logs for analytics..."
 sample_employees = Employee.limit(500)
 logs_data = []
