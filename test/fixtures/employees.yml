@@ -1,23 +1,32 @@
-# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
-
 one:
-  name: MyString
-  email: MyString
-  department: MyString
-  country: MyString
-  currency: MyString
-  base_salary: 9.99
-  allowances: 9.99
-  joining_date: 2026-10-03
-  status: MyString
+  name: Priya Sharma
+  email: priya.sharma@acme.com
+  department: Engineering
+  country: India
+  currency: INR
+  base_salary: 1200000.00
+  allowances: 120000.00
+  joining_date: 2022-04-01
+  status: Active
 
 two:
-  name: MyString
-  email: MyString
-  department: MyString
-  country: MyString
-  currency: MyString
-  base_salary: 9.99
-  allowances: 9.99
-  joining_date: 2026-10-03
-  status: MyString
+  name: John Smith
+  email: john.smith@acme.com
+  department: Sales
+  country: United States
+  currency: USD
+  base_salary: 95000.00
+  allowances: 8000.00
+  joining_date: 2021-09-15
+  status: Active
+
+three:
+  name: Elena Ivanov
+  email: elena.ivanov@acme.com
+  department: Finance
+  country: Germany
+  currency: EUR
+  base_salary: 72000.00
+  allowances: 5000.00
+  joining_date: 2023-01-10
+  status: Suspended

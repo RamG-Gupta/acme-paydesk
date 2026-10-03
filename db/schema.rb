@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_03_164641) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_03_180000) do
   create_table "employees", force: :cascade do |t|
     t.string "name"
     t.string "email"
@@ -23,7 +23,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_03_164641) do
     t.string "status"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.index ["country"], name: "index_employees_on_country"
+    t.index ["currency"], name: "index_employees_on_currency"
+    t.index ["department"], name: "index_employees_on_department"
     t.index ["email"], name: "index_employees_on_email", unique: true
+    t.index ["name"], name: "index_employees_on_name"
+    t.index ["status"], name: "index_employees_on_status"
   end
 
   create_table "salary_logs", force: :cascade do |t|
@@ -33,6 +38,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_03_164641) do
     t.string "change_reason"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.decimal "old_allowances", precision: 12, scale: 2
+    t.decimal "new_allowances", precision: 12, scale: 2
     t.index ["employee_id"], name: "index_salary_logs_on_employee_id"
   end
 

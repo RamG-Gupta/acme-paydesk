@@ -1,13 +1,15 @@
-# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
-
 one:
   employee: one
-  old_salary: 9.99
-  new_salary: 9.99
-  change_reason: MyString
+  old_salary: 1000000.00
+  new_salary: 1200000.00
+  old_allowances: 100000.00
+  new_allowances: 120000.00
+  change_reason: Annual appraisal
 
 two:
   employee: two
-  old_salary: 9.99
-  new_salary: 9.99
-  change_reason: MyString
+  old_salary: 90000.00
+  new_salary: 95000.00
+  old_allowances: 7000.00
+  new_allowances: 8000.00
+  change_reason: Market correction
