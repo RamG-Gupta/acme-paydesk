@@ -18,7 +18,7 @@ COUNTRIES_CONFIG = {
   "Germany" => { currency: "EUR", min_base: 50_000, max_base: 120_000 },
   "Singapore" => { currency: "SGD", min_base: 65_000, max_base: 150_000 }
 }.freeze
-STATUSES = (["Active"] * 8 + %w[Suspended Terminated]).freeze
+STATUSES = ([ "Active" ] * 8 + %w[Suspended Terminated]).freeze
 
 FIRST_NAMES = %w[Amit John Sarah Emily Rahul Priya Carlos Michael Elena Yuki David Jessica Raj Sita James Linda].freeze
 LAST_NAMES = %w[Sharma Smith Johnson Gupta Davis Rodriguez Patel Miller Tanaka Ivanov Jones Brown Verma Taylor].freeze

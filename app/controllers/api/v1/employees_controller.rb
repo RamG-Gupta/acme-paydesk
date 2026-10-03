@@ -6,7 +6,7 @@ class Api::V1::EmployeesController < ApplicationController
 
   def index
     employees = Employee.filtered(filter_params)
-    page = [params[:page].to_i, 1].max
+    page = [ params[:page].to_i, 1 ].max
     per_page = params[:per_page].presence&.to_i || 20
     per_page = 20 if per_page < 1
     per_page = 100 if per_page > 100
@@ -19,7 +19,7 @@ class Api::V1::EmployeesController < ApplicationController
       meta: {
         current_page: page,
         per_page: per_page,
-        total_pages: [(total_count.to_f / per_page).ceil, 1].max,
+        total_pages: [ (total_count.to_f / per_page).ceil, 1 ].max,
         total_count: total_count
       }
     }
